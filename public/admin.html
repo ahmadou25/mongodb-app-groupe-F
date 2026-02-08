@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Médiathèque</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .stat-card {
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .tab-button.active {
+            background: #3b82f6;
+            color: white;
+        }
+        .table-row:hover {
+            background: #f8fafc;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Barre de navigation -->
+    <nav class="bg-white shadow-lg">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center">
+                <div class="bg-blue-500 text-white p-2 rounded-lg mr-3">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg">Administration Médiathèque</h1>
+                    <p class="text-sm text-gray-600">UEL 315 - Groupe F</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <span id="user-info" class="text-sm text-gray-700"></span>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+                </button>
+                <a href="/" class="text-blue-500 hover:text-blue-700">
+                    <i class="fas fa-home mr-1"></i>Accueil
+                </a>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container mx-auto px-4 py-8">
+        <!-- Onglets -->
+        <div class="flex space-x-2 mb-8 overflow-x-auto">
+            <button onclick="switchTab('dashboard')" class="tab-button active px-4 py-2 rounded-lg font-medium">
+                <i class="fas fa-chart-bar mr-2"></i>Dashboard
+            </button>
+            <button onclick="switchTab('utilisateurs')" class="tab-button px-4 py-2 rounded-lg font-medium">
+                <i class="fas fa-users mr-2"></i>Utilisateurs
+            </button>
+            <button onclick="switchTab('documents')" class="tab-button px-4 py-2 rounded-lg font-medium">
+                <i class="fas fa-book mr-2"></i>Documents
+            </button>
+            <button onclick="switchTab('parametres')" class="tab-button px-4 py-2 rounded-lg font-medium">
+                <i class="fas fa-sliders-h mr-2"></i>Paramètres
+            </button>
+        </div>
+        
+        <!-- Contenu -->
+        <div id="content">
+            <!-- Dashboard -->
+            <div id="tab-dashboard">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-blue-500">
+                        <div class="flex items-center">
+                            <div class="bg-blue-100 text-blue-600 p-3 rounded-lg mr-4">
+                                <i class="fas fa-book text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Documents</p>
+                                <h3 class="text-2xl font-bold" id="stat-documents">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-green-500">
+                        <div class="flex items-center">
+                            <div class="bg-green-100 text-green-600 p-3 rounded-lg mr-4">
+                                <i class="fas fa-users text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Utilisateurs</p>
+                                <h3 class="text-2xl font-bold" id="stat-utilisateurs">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-yellow-500">
+                        <div class="flex items-center">
+                            <div class="bg-yellow-100 text-yellow-600 p-3 rounded-lg mr-4">
+                                <i class="fas fa-handshake text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Emprunts actifs</p>
+                                <h3 class="text-2xl font-bold" id="stat-emprunts">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card bg-white p-6 rounded-xl shadow border-l-4 border-red-500">
+                        <div class="flex items-center">
+                            <div class="bg-red-100 text-red-600 p-3 rounded-lg mr-4">
+                                <i class="fas fa-exclamation-triangle text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">En retard</p>
+                                <h3 class="text-2xl font-bold" id="stat-retard">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions rapides -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <h3 class="font-bold text-lg mb-4 flex items-center">
+                            <i class="fas fa-bolt mr-2 text-yellow-500"></i>
+                            Actions rapides
+                        </h3>
+                        <div class="space-y-3">
+                            <button onclick="switchTab('documents')" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 p-3 rounded-lg flex items-center justify-between">
+                                <span>
+                                    <i class="fas fa-plus mr-2"></i>
+                                    Ajouter un document
+                                </span>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                            <button onclick="switchTab('utilisateurs')" class="w-full bg-green-50 hover:bg-green-100 text-green-700 p-3 rounded-lg flex items-center justify-between">
+                                <span>
+                                    <i class="fas fa-user-plus mr-2"></i>
+                                    Gérer les utilisateurs
+                                </span>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <h3 class="font-bold text-lg mb-4 flex items-center">
+                            <i class="fas fa-info-circle mr-2 text-blue-500"></i>
+                            Informations système
+                        </h3>
+                        <div class="space-y-2">
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">Version</span>
+                                <span class="font-medium">1.0.0</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">Statut MongoDB</span>
+                                <span id="mongo-status" class="font-medium">Vérification...</span>
+                            </div>
+                            <div class="flex justify-between py-2">
+                                <span class="text-gray-600">Dernière mise à jour</span>
+                                <span class="font-medium" id="last-update">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Gestion utilisateurs -->
+            <div id="tab-utilisateurs" class="hidden">
+                <div class="bg-white rounded-xl shadow p-6 mb-6">
+                    <h3 class="font-bold text-lg mb-4">Ajouter un utilisateur</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                        <input type="text" id="new-user-nom" placeholder="Nom" class="p-3 border rounded-lg">
+                        <input type="email" id="new-user-email" placeholder="Email" class="p-3 border rounded-lg">
+                        <input type="password" id="new-user-password" placeholder="Mot de passe" class="p-3 border rounded-lg">
+                        <select id="new-user-role" class="p-3 border rounded-lg">
+                            <option value="user">Utilisateur</option>
+                            <option value="admin">Administrateur</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center">
+                            <span class="mr-2">Limite d'emprunts:</span>
+                            <input type="number" id="new-user-limite" value="3" min="1" class="w-20 p-2 border rounded">
+                        </div>
+                        <button onclick="addUser()" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600">
+                            <i class="fas fa-plus mr-2"></i>Ajouter
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div class="p-6 border-b">
+                        <h3 class="font-bold text-lg">Liste des utilisateurs</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Nom</th>
+                                    <th class="p-3 text-left">Email</th>
+                                    <th class="p-3 text-left">Rôle</th>
+                                    <th class="p-3 text-left">Emprunts</th>
+                                    <th class="p-3 text-left">Limite</th>
+                                    <th class="p-3 text-left">Inscription</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-list">
+                                <!-- Rempli par JS -->
+                                <tr>
+                                    <td colspan="6" class="p-8 text-center text-gray-500">
+                                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+                                        <p>Chargement des utilisateurs...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Gestion documents -->
+            <div id="tab-documents" class="hidden">
+                <div class="bg-white rounded-xl shadow p-6 mb-6">
+                    <h3 class="font-bold text-lg mb-4">Ajouter un document</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                        <input type="text" id="new-doc-titre" placeholder="Titre" class="p-3 border rounded-lg">
+                        <input type="text" id="new-doc-auteur" placeholder="Auteur" class="p-3 border rounded-lg">
+                        <input type="text" id="new-doc-type" placeholder="Type (Livre, Revue...)" class="p-3 border rounded-lg">
+                        <input type="number" id="new-doc-annee" placeholder="Année" class="p-3 border rounded-lg">
+                    </div>
+                    <button onclick="addDocument()" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600">
+                        <i class="fas fa-plus mr-2"></i>Ajouter le document
+                    </button>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div class="p-6 border-b flex justify-between items-center">
+                        <h3 class="font-bold text-lg">Documents de la bibliothèque</h3>
+                        <div class="text-sm text-gray-600">
+                            <span id="doc-count">0</span> documents
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Titre</th>
+                                    <th class="p-3 text-left">Auteur</th>
+                                    <th class="p-3 text-left">Type</th>
+                                    <th class="p-3 text-left">Statut</th>
+                                    <th class="p-3 text-left">Réservations</th>
+                                    <th class="p-3 text-left">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="documents-list">
+                                <!-- Rempli par JS -->
+                                <tr>
+                                    <td colspan="6" class="p-8 text-center text-gray-500">
+                                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+                                        <p>Chargement des documents...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Paramètres -->
+            <div id="tab-parametres" class="hidden">
+                <div class="bg-white rounded-xl shadow p-6">
+                    <h3 class="font-bold text-lg mb-6">Configuration du système</h3>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Limite d'emprunts par utilisateur
+                            </label>
+                            <input type="number" id="param-limite" min="1" class="w-32 p-3 border rounded-lg" value="3">
+                            <p class="text-sm text-gray-500 mt-1">Nombre maximum de documents qu'un utilisateur peut emprunter simultanément</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Durée maximale d'emprunt (jours)
+                            </label>
+                            <input type="number" id="param-duree" min="1" class="w-32 p-3 border rounded-lg" value="30">
+                            <p class="text-sm text-gray-500 mt-1">Nombre de jours avant qu'un emprunt ne soit considéré en retard</p>
+                        </div>
+                        
+                        <button onclick="saveParameters()" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600">
+                            <i class="fas fa-save mr-2"></i>Enregistrer les paramètres
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notification -->
+    <div id="notification" class="fixed top-4 right-4 z-50 hidden p-4 rounded-lg shadow-lg max-w-sm"></div>
+    
+    <script>
+        let currentUser = null;
+        
+        // Vérifier l'authentification et les droits admin
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/me');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    showNotification('Veuillez vous connecter', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 1500);
+                    return;
+                }
+                
+                currentUser = data.user;
+                
+                // Vérifier les droits admin
+                if (currentUser.role !== 'admin') {
+                    showNotification('Accès réservé aux administrateurs', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                    return;
+                }
+                
+                document.getElementById('user-info').textContent = 
+                    `${currentUser.nom} (${currentUser.role})`;
+                
+                // Charger les données
+                loadDashboard();
+                checkMongoStatus();
+                
+            } catch (error) {
+                showNotification('Erreur d\'authentification', 'error');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
+            }
+        }
+        
+        // Déconnexion
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+        
+        // Vérifier statut MongoDB
+        async function checkMongoStatus() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                
+                const statusElement = document.getElementById('mongo-status');
+                if (data.success && data.mongodb === 'connected') {
+                    statusElement.textContent = 'Connecté';
+                    statusElement.className = 'font-medium text-green-600';
+                } else {
+                    statusElement.textContent = 'Déconnecté';
+                    statusElement.className = 'font-medium text-red-600';
+                }
+                
+                document.getElementById('last-update').textContent = 
+                    new Date(data.timestamp).toLocaleString('fr-FR');
+                    
+            } catch (error) {
+                document.getElementById('mongo-status').textContent = 'Erreur';
+            }
+        }
+        
+        // Charger le dashboard
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/admin/dashboard');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.dashboard;
+                    document.getElementById('stat-documents').textContent = stats.totalDocuments;
+                    document.getElementById('stat-utilisateurs').textContent = stats.totalUtilisateurs;
+                    document.getElementById('stat-emprunts').textContent = stats.empruntsEnCours;
+                    document.getElementById('stat-retard').textContent = stats.empruntsRetard;
+                }
+            } catch (error) {
+                showNotification('Erreur chargement dashboard', 'error');
+            }
+        }
+        
+        // Charger les utilisateurs
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/admin/utilisateurs');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const tbody = document.getElementById('users-list');
+                    tbody.innerHTML = data.utilisateurs.map(user => `
+                        <tr class="table-row border-b hover:bg-gray-50">
+                            <td class="p-3">${user.nom}</td>
+                            <td class="p-3">${user.email}</td>
+                            <td class="p-3">
+                                <span class="px-2 py-1 rounded text-xs ${
+                                    user.role === 'admin' 
+                                        ? 'bg-purple-100 text-purple-800' 
+                                        : 'bg-blue-100 text-blue-800'
+                                }">
+                                    ${user.role}
+                                </span>
+                            </td>
+                            <td class="p-3">${user.emprunts_actuels || 0}</td>
+                            <td class="p-3">${user.limite_emprunts || 3}</td>
+                            <td class="p-3">
+                                ${user.date_creation ? new Date(user.date_creation).toLocaleDateString('fr-FR') : '-'}
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                showNotification('Erreur chargement utilisateurs', 'error');
+            }
+        }
+        
+        // Ajouter un utilisateur
+        async function addUser() {
+            const nom = document.getElementById('new-user-nom').value;
+            const email = document.getElementById('new-user-email').value;
+            const password = document.getElementById('new-user-password').value;
+            const role = document.getElementById('new-user-role').value;
+            const limite = document.getElementById('new-user-limite').value;
+            
+            if (!nom || !email || !password) {
+                showNotification('Veuillez remplir tous les champs', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/utilisateurs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        nom, 
+                        email, 
+                        password, 
+                        role, 
+                        limite_emprunts: parseInt(limite) 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Utilisateur ajouté avec succès', 'success');
+                    document.getElementById('new-user-nom').value = '';
+                    document.getElementById('new-user-email').value = '';
+                    document.getElementById('new-user-password').value = '';
+                    loadUsers();
+                } else {
+                    showNotification(data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Erreur ajout utilisateur', 'error');
+            }
+        }
+        
+        // Charger les documents
+        async function loadDocuments() {
+            try {
+                const response = await fetch('/api/documents');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('doc-count').textContent = data.count;
+                    const tbody = document.getElementById('documents-list');
+                    tbody.innerHTML = data.documents.map(doc => `
+                        <tr class="table-row border-b hover:bg-gray-50">
+                            <td class="p-3">${doc.titre || 'Sans titre'}</td>
+                            <td class="p-3">${doc.auteur || 'Inconnu'}</td>
+                            <td class="p-3">${doc.type_de_document || 'Non spécifié'}</td>
+                            <td class="p-3">
+                                <span class="px-2 py-1 rounded text-xs ${
+                                    doc.FIELD9 === 'disponible' 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : 'bg-yellow-100 text-yellow-800'
+                                }">
+                                    ${doc.FIELD9 === 'disponible' ? 'Disponible' : 'Emprunté'}
+                                </span>
+                            </td>
+                            <td class="p-3">${doc.reservations || 0}</td>
+                            <td class="p-3">
+                                <button onclick="deleteDocument('${doc._id}')" 
+                                        class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+                                        ${doc.FIELD9 === 'emprunté' ? 'disabled' : ''}>
+                                    <i class="fas fa-trash mr-1"></i>Supprimer
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                showNotification('Erreur chargement documents', 'error');
+            }
+        }
+        
+        // Ajouter un document
+        async function addDocument() {
+            const titre = document.getElementById('new-doc-titre').value;
+            const auteur = document.getElementById('new-doc-auteur').value;
+            const type = document.getElementById('new-doc-type').value;
+            const annee = document.getElementById('new-doc-annee').value;
+            
+            if (!titre || !auteur) {
+                showNotification('Titre et auteur requis', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/documents', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        titre, 
+                        auteur, 
+                        type_de_document: type || 'Livre',
+                        annee: annee || new Date().getFullYear()
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Document ajouté avec succès', 'success');
+                    document.getElementById('new-doc-titre').value = '';
+                    document.getElementById('new-doc-auteur').value = '';
+                    document.getElementById('new-doc-type').value = '';
+                    document.getElementById('new-doc-annee').value = '';
+                    loadDocuments();
+                } else {
+                    showNotification(data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Erreur ajout document', 'error');
+            }
+        }
+        
+        // Supprimer un document
+        async function deleteDocument(id) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) return;
+            
+            try {
+                const response = await fetch(`/api/admin/documents/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Document supprimé', 'success');
+                    loadDocuments();
+                } else {
+                    showNotification(data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Erreur suppression', 'error');
+            }
+        }
+        
+        // Charger les paramètres
+        async function loadParameters() {
+            try {
+                // Pour simplifier, on utilise les valeurs par défaut
+                document.getElementById('param-limite').value = 3;
+                document.getElementById('param-duree').value = 30;
+            } catch (error) {
+                showNotification('Erreur chargement paramètres', 'error');
+            }
+        }
+        
+        // Sauvegarder les paramètres
+        async function saveParameters() {
+            const limite = document.getElementById('param-limite').value;
+            const duree = document.getElementById('param-duree').value;
+            
+            try {
+                // Ici, vous devriez implémenter l'API /api/admin/parametres
+                // Pour le moment, on simule
+                showNotification('Paramètres sauvegardés (simulation)', 'success');
+                setTimeout(() => {
+                    showNotification('En production, ces paramètres seraient sauvegardés dans la base de données', 'info');
+                }, 1000);
+            } catch (error) {
+                showNotification('Erreur sauvegarde', 'error');
+            }
+        }
+        
+        // Changer d'onglet
+        function switchTab(tabName) {
+            // Désactiver tous les onglets
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Activer le bouton cliqué
+            event.target.classList.add('active');
+            
+            // Cacher tous les contenus
+            document.querySelectorAll('#content > div').forEach(div => {
+                div.classList.add('hidden');
+            });
+            
+            // Afficher le contenu correspondant
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            
+            // Charger les données si nécessaire
+            switch(tabName) {
+                case 'utilisateurs':
+                    loadUsers();
+                    break;
+                case 'documents':
+                    loadDocuments();
+                    break;
+                case 'parametres':
+                    loadParameters();
+                    break;
+            }
+        }
+        
+        // Notification
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
+                type === 'success' ? 'bg-green-100 text-green-800 border border-green-300' :
+                type === 'error' ? 'bg-red-100 text-red-800 border border-red-300' :
+                'bg-blue-100 text-blue-800 border border-blue-300'
+            }`;
+            notification.classList.remove('hidden');
+            
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 5000);
+        }
+        
+        // Initialisation
+        checkAuth();
+        
+        // Rafraîchir les stats toutes les 30 secondes
+        setInterval(() => {
+            if (document.getElementById('tab-dashboard').classList.contains('hidden') === false) {
+                loadDashboard();
+                checkMongoStatus();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>

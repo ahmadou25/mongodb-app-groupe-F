@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 Médiathèque - Groupe F</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .status-disponible { background: #d4edda; color: #155724; }
+        .status-emprunte { background: #f8d7da; color: #721c24; }
+        
+        .doc-card {
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        .doc-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .btn-action {
+            transition: all 0.2s;
+        }
+        
+        .btn-action:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* Style pour le modal */
+        .modal-backdrop {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        
+        /* Animation pour les notifications */
+        .notification {
+            animation: slideInRight 0.3s ease-out;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Style pour les boutons dans le modal */
+        .modal-action-btn {
+            transition: all 0.2s;
+        }
+        
+        .modal-action-btn:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-12">
+            <div class="flex items-center justify-between mb-4">
+                <!-- Logo et titre -->
+                <div class="flex items-center">
+                    <div class="bg-blue-500 text-white p-3 rounded-full mr-4">
+                        <i class="fas fa-book text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">Médiathèque Groupe F</h1>
+                        <p class="text-gray-600 mt-1">Gestion des documents avec MongoDB & Node.js</p>
+                    </div>
+                </div>
+                
+                <!-- Barre utilisateur -->
+                <div class="flex items-center space-x-4" id="auth-section">
+                    <!-- Si non connecté -->
+                    <div id="not-logged-in">
+                        <a href="/login" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center">
+                            <i class="fas fa-sign-in-alt mr-2"></i>Connexion
+                        </a>
+                    </div>
+                    
+                    <!-- Si connecté -->
+                    <div id="logged-in" class="hidden">
+                        <div class="flex items-center space-x-3">
+                            <div class="text-right">
+                                <p class="font-medium text-sm" id="user-name"></p>
+                                <p class="text-xs text-gray-600" id="user-email"></p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                                    <i class="fas fa-book mr-1"></i>
+                                    <span id="user-emprunts">0</span>/<span id="user-limite">3</span>
+                                </span>
+                                <button onclick="logout()" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                </button>
+                                <span id="admin-link" class="hidden">
+                                    <a href="/admin" class="bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600">
+                                        <i class="fas fa-cog mr-1"></i>Admin
+                                    </a>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Indicateur connexion -->
+            <div class="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-sm border">
+                <span id="status-dot" class="w-3 h-3 rounded-full bg-gray-400 mr-2"></span>
+                <span id="status-text" class="text-sm font-medium">Connexion...</span>
+            </div>
+        </header>
+
+        <!-- Statistiques -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+            <div class="bg-white rounded-xl shadow p-6 text-center border-l-4 border-blue-500">
+                <div class="text-3xl font-bold text-blue-600" id="total">0</div>
+                <div class="text-gray-600 mt-2">
+                    <i class="fas fa-book mr-2"></i>Total Documents
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow p-6 text-center border-l-4 border-green-500">
+                <div class="text-3xl font-bold text-green-600" id="disponibles">0</div>
+                <div class="text-gray-600 mt-2">
+                    <i class="fas fa-check-circle mr-2"></i>Disponibles
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow p-6 text-center border-l-4 border-yellow-500">
+                <div class="text-3xl font-bold text-yellow-600" id="empruntes">0</div>
+                <div class="text-gray-600 mt-2">
+                    <i class="fas fa-user-check mr-2"></i>Empruntés
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow p-6 text-center border-l-4 border-purple-500">
+                <div class="text-3xl font-bold text-purple-600" id="reservations">0</div>
+                <div class="text-gray-600 mt-2">
+                    <i class="fas fa-chart-line mr-2"></i>Réservations
+                </div>
+            </div>
+        </div>
+
+        <!-- Barre de contrôle -->
+        <div class="bg-white rounded-xl shadow p-6 mb-8">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-grow">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-4 top-3 text-gray-400"></i>
+                        <input type="text" id="search" placeholder="Rechercher un document par titre, auteur ou type..." 
+                               class="w-full pl-12 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button onclick="loadDocs()" class="bg-blue-500 text-white px-5 py-3 rounded-xl hover:bg-blue-600 btn-action flex items-center">
+                        <i class="fas fa-redo mr-2"></i>Actualiser
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documents - Grille 3 colonnes -->
+        <div class="bg-white rounded-xl shadow overflow-hidden mb-10">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-gray-800">
+                    <i class="fas fa-book-open mr-2"></i>Catalogue des Documents
+                </h2>
+                <div class="text-sm text-gray-500">
+                    <span id="docs-count">0</span> document(s) trouvé(s)
+                </div>
+            </div>
+            
+            <div id="docs-container" class="p-6">
+                <!-- État de chargement -->
+                <div class="text-center py-12 text-gray-500">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+                    <p class="text-lg font-medium">Chargement des documents...</p>
+                    <p class="text-sm mt-2">Connexion à la base de données en cours</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations API -->
+        <div class="bg-gray-50 rounded-xl p-6 border">
+            <h3 class="font-semibold text-gray-700 mb-4">
+                <i class="fas fa-code mr-2"></i>Points d'accès API
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <a href="/health-page" class="block p-4 bg-white rounded-lg border hover:shadow-md transition-shadow">
+                    <div class="text-blue-600 font-medium">📊 État du système</div>
+                    <div class="text-sm text-gray-600 mt-1">Vérifier santé serveur</div>
+                </a>
+                <a href="/documents-page" class="block p-4 bg-white rounded-lg border hover:shadow-md transition-shadow">
+                    <div class="text-blue-600 font-medium">📚 Liste documents</div>
+                    <div class="text-sm text-gray-600 mt-1">Voir tous les documents</div>
+                </a>
+                <a href="/stats-page" class="block p-4 bg-white rounded-lg border hover:shadow-md transition-shadow">
+                    <div class="text-blue-600 font-medium">📈 Statistiques</div>
+                    <div class="text-sm text-gray-600 mt-1">Vue d'ensemble</div>
+                </a>
+                <div class="block p-4 bg-white rounded-lg border">
+                    <div class="text-blue-600 font-medium">🔗 API JSON</div>
+                    <div class="text-sm text-gray-600 mt-1">
+                        <div class="flex flex-wrap gap-2">
+                            <a href="/api/health" class="text-blue-500 hover:underline text-xs bg-blue-50 px-2 py-1 rounded">/health</a>
+                            <a href="/api/documents" class="text-blue-500 hover:underline text-xs bg-blue-50 px-2 py-1 rounded">/documents</a>
+                            <a href="/api/stats" class="text-blue-500 hover:underline text-xs bg-blue-50 px-2 py-1 rounded">/stats</a>
+                        </div>
+                        <p class="mt-2 text-gray-500 text-xs">Pour développeurs</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-12 pt-8 border-t text-center text-gray-600">
+            <p class="font-medium">Projet MongoDB/Node.js - UE L315 Bases de données - Semaine 4</p>
+            <p class="mt-2">Développé par le Groupe F - MMI 2024/25</p>
+            <div class="mt-4 flex justify-center space-x-6">
+                <a href="https://github.com/ahmadou25/mongodb-app-groupe-F" 
+                   class="text-gray-500 hover:text-gray-700">
+                    <i class="fab fa-github mr-1"></i>GitHub
+                </a>
+                <span class="text-gray-400">•</span>
+                <span class="text-gray-500">Ahmadou Diaw & co</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Script JavaScript -->
+    <script>
+        const API = '/api';
+        let allDocuments = [];
+        let currentUser = null;
+
+        // Chargement initial
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth(); // Vérifie l'authentification
+            loadDocs();
+            loadStats();
+            checkHealth();
+        });
+
+        // Vérifier état connexion MongoDB
+        async function checkHealth() {
+            try {
+                const res = await fetch(API + '/health');
+                const data = await res.json();
+                
+                updateConnectionStatus(data.success && data.mongodb === 'connected');
+            } catch (err) {
+                updateConnectionStatus(false);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('status-dot');
+            const text = document.getElementById('status-text');
+            
+            if (connected) {
+                dot.className = 'w-3 h-3 rounded-full bg-green-500 mr-2';
+                text.textContent = 'MongoDB connecté';
+            } else {
+                dot.className = 'w-3 h-3 rounded-full bg-red-500 mr-2';
+                text.textContent = 'MongoDB déconnecté';
+            }
+        }
+
+        // Gestion de l'authentification
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/me');
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    updateAuthUI(true);
+                } else {
+                    updateAuthUI(false);
+                }
+            } catch (error) {
+                updateAuthUI(false);
+            }
+        }
+
+        function updateAuthUI(isLoggedIn) {
+            const loggedInDiv = document.getElementById('logged-in');
+            const notLoggedInDiv = document.getElementById('not-logged-in');
+            
+            if (isLoggedIn && currentUser) {
+                loggedInDiv.classList.remove('hidden');
+                notLoggedInDiv.classList.add('hidden');
+                
+                document.getElementById('user-name').textContent = currentUser.nom;
+                document.getElementById('user-email').textContent = currentUser.email;
+                document.getElementById('user-emprunts').textContent = currentUser.emprunts_actuels || 0;
+                document.getElementById('user-limite').textContent = currentUser.limite_emprunts || 3;
+                
+                // Afficher le lien admin si admin
+                if (currentUser.role === 'admin') {
+                    document.getElementById('admin-link').classList.remove('hidden');
+                }
+            } else {
+                loggedInDiv.classList.add('hidden');
+                notLoggedInDiv.classList.remove('hidden');
+            }
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            currentUser = null;
+            updateAuthUI(false);
+            window.location.reload();
+        }
+
+        // Charger documents
+        async function loadDocs() {
+            const container = document.getElementById('docs-container');
+            container.innerHTML = `
+                <div class="text-center py-12 text-gray-500">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+                    <p>Chargement...</p>
+                </div>
+            `;
+
+            try {
+                const res = await fetch(API + '/documents');
+                const data = await res.json();
+                
+                if (data.success) {
+                    allDocuments = data.documents;
+                    displayDocs(allDocuments);
+                } else {
+                    showError('Erreur: ' + (data.error || 'Impossible de charger les documents'));
+                }
+            } catch (err) {
+                showError('Erreur réseau: ' + err.message);
+            }
+        }
+
+        // Afficher documents dans grille 3 colonnes
+        function displayDocs(docs) {
+            const container = document.getElementById('docs-container');
+            const countElement = document.getElementById('docs-count');
+            
+            if (!docs || docs.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-500">
+                        <i class="fas fa-book-open text-4xl mb-4"></i>
+                        <p class="text-lg font-medium">Aucun document disponible</p>
+                        <p class="text-sm mt-2">La base de données semble vide</p>
+                        <button onclick="loadDocs()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                            <i class="fas fa-redo mr-2"></i>Rafraîchir
+                        </button>
+                    </div>
+                `;
+                countElement.textContent = '0';
+                return;
+            }
+
+            countElement.textContent = docs.length;
+            
+            let html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
+            
+            docs.forEach((doc, index) => {
+                const isAvailable = doc.FIELD9 === 'disponible';
+                const dateEmprunt = doc.date_emprunt 
+                    ? new Date(doc.date_emprunt).toLocaleDateString('fr-FR')
+                    : null;
+                
+                // Échapper les textes pour éviter les problèmes d'apostrophes
+                const safeTitre = escapeText(doc.titre || 'Sans titre');
+                const safeAuteur = escapeText(doc.auteur || 'Auteur inconnu');
+                const safeType = escapeText(doc.type_de_document || 'Non spécifié');
+                const safeEmpruntePar = escapeText(doc.emprunte_par || '');
+                
+                html += `
+                    <!-- Carte document ${index + 1} -->
+                    <div class="doc-card border rounded-xl shadow-sm bg-white overflow-hidden h-full flex flex-col">
+                        <!-- En-tête carte -->
+                        <div class="p-5 border-b bg-gray-50">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1 pr-2">
+                                    <h3 class="font-bold text-lg text-gray-800 truncate" title="${safeTitre}">
+                                        ${safeTitre}
+                                    </h3>
+                                    <p class="text-gray-600 text-sm mt-1 truncate">
+                                        <i class="fas fa-user-pen mr-1"></i>${safeAuteur}
+                                    </p>
+                                </div>
+                                <span class="ml-2 px-3 py-1 rounded-full text-xs font-semibold ${isAvailable ? 'status-disponible' : 'status-emprunte'}">
+                                    ${isAvailable ? 'Disponible' : 'Emprunté'}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Corps carte -->
+                        <div class="p-5 flex-grow">
+                            <!-- Informations détaillées -->
+                            <div class="space-y-3 mb-4">
+                                <div class="flex items-start">
+                                    <i class="fas fa-tag text-gray-400 mt-1 mr-3 w-4"></i>
+                                    <div>
+                                        <p class="text-xs text-gray-500">Type</p>
+                                        <p class="text-sm font-medium">${safeType}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start">
+                                    <i class="fas fa-calendar text-gray-400 mt-1 mr-3 w-4"></i>
+                                    <div>
+                                        <p class="text-xs text-gray-500">Année</p>
+                                        <p class="text-sm font-medium">${doc.annee || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start">
+                                    <i class="fas fa-chart-line text-gray-400 mt-1 mr-3 w-4"></i>
+                                    <div>
+                                        <p class="text-xs text-gray-500">Réservations</p>
+                                        <p class="text-sm font-medium">${doc.reservations || 0}</p>
+                                    </div>
+                                </div>
+                                
+                                ${!isAvailable && doc.emprunte_par ? `
+                                    <div class="flex items-start">
+                                        <i class="fas fa-user text-gray-400 mt-1 mr-3 w-4"></i>
+                                        <div>
+                                            <p class="text-xs text-gray-500">Emprunté par</p>
+                                            <p class="text-sm font-medium">${safeEmpruntePar}</p>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                
+                                ${dateEmprunt ? `
+                                    <div class="flex items-start">
+                                        <i class="fas fa-clock text-gray-400 mt-1 mr-3 w-4"></i>
+                                        <div>
+                                            <p class="text-xs text-gray-500">Depuis le</p>
+                                            <p class="text-sm font-medium">${dateEmprunt}</p>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            <!-- ID document -->
+                            <div class="mt-4 mb-4 p-2 bg-gray-50 rounded">
+                                <p class="text-xs text-gray-500 text-center font-mono">
+                                    ID: ${doc._id ? doc._id.toString().substring(0, 12) + '...' : 'N/A'}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="p-5 border-t bg-gray-50">
+                            <div class="space-y-3">
+                                <!-- Bouton principal -->
+                                ${isAvailable 
+                                    ? `
+                                    <button onclick="emprunterDocument('${doc._id}', '${safeTitre}')" 
+                                            class="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 btn-action flex items-center justify-center">
+                                        <i class="fas fa-handshake mr-3"></i>
+                                        Emprunter
+                                    </button>
+                                    `
+                                    : `
+                                    <button onclick="retournerDocument('${doc._id}', '${safeTitre}')" 
+                                            class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 btn-action flex items-center justify-center">
+                                        <i class="fas fa-rotate-left mr-3"></i>
+                                        Retourner
+                                    </button>
+                                    `
+                                }
+                                
+                                <!-- Boutons secondaires -->
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="toggleDocument('${doc._id}')" 
+                                            class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-3 rounded text-sm transition-colors btn-action flex items-center justify-center">
+                                        <i class="fas fa-sync-alt mr-2"></i>
+                                        Basculer
+                                    </button>
+                                    
+                                    <button onclick="voirDetails('${doc._id}')" 
+                                            class="bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium py-2 px-3 rounded text-sm transition-colors btn-action flex items-center justify-center">
+                                        <i class="fas fa-eye mr-2"></i>
+                                        Voir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>'; // Fin de la grille
+            container.innerHTML = html;
+            
+            // Configurer recherche
+            setupSearch();
+        }
+
+        // Fonction pour échapper le texte (évite les problèmes avec les apostrophes)
+        function escapeText(text) {
+            if (!text) return '';
+            return text
+                .replace(/'/g, "&#39;")
+                .replace(/"/g, "&quot;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+
+        // Charger statistiques
+        async function loadStats() {
+            try {
+                const res = await fetch(API + '/stats');
+                const data = await res.json();
+                
+                if (data.success) {
+                    const stats = data.stats;
+                    document.getElementById('total').textContent = stats.total;
+                    document.getElementById('disponibles').textContent = stats.disponibles;
+                    document.getElementById('empruntes').textContent = stats.empruntes;
+                    document.getElementById('reservations').textContent = stats.totalReservations;
+                }
+            } catch (err) {
+                console.error('Erreur stats:', err);
+            }
+        }
+
+        // Emprunter document
+        async function emprunterDocument(id, titre) {
+            if (!currentUser) {
+                showNotification('Veuillez vous connecter pour emprunter', 'error');
+                window.location.href = '/login';
+                return;
+            }
+            
+            // Vérifier la limite
+            if (currentUser.emprunts_actuels >= currentUser.limite_emprunts) {
+                showNotification(`Limite d'emprunts atteinte (${currentUser.limite_emprunts})`, 'error');
+                return;
+            }
+            
+            if (!confirm(`Voulez-vous vraiment emprunter "${titre}" ?`)) return;
+            
+            try {
+                const res = await fetch(API + '/documents/' + id + '/emprunter', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user: currentUser.email })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    showNotification('✅ ' + data.message, 'success');
+                    setTimeout(() => {
+                        loadDocs();
+                        loadStats();
+                        checkAuth(); // Rafraîchir les infos utilisateur
+                    }, 500);
+                } else {
+                    showNotification('❌ ' + (data.error || 'Erreur lors de l\'emprunt'), 'error');
+                }
+            } catch (err) {
+                showNotification('❌ Erreur réseau: ' + err.message, 'error');
+            }
+        }
+
+        // Retourner document
+        async function retournerDocument(id, titre) {
+            if (!currentUser) {
+                showNotification('Veuillez vous connecter', 'error');
+                return;
+            }
+            
+            if (!confirm(`Voulez-vous vraiment retourner "${titre}" ?`)) return;
+            
+            try {
+                const res = await fetch(API + '/documents/' + id + '/retourner', {
+                    method: 'POST'
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    showNotification('✅ ' + data.message, 'success');
+                    setTimeout(() => {
+                        loadDocs();
+                        loadStats();
+                        checkAuth(); // Rafraîchir les infos utilisateur
+                    }, 500);
+                } else {
+                    showNotification('❌ ' + (data.error || 'Erreur lors du retour'), 'error');
+                }
+            } catch (err) {
+                showNotification('❌ Erreur réseau: ' + err.message, 'error');
+            }
+        }
+
+        // Basculer FIELD9
+        async function toggleDocument(id) {
+            try {
+                const res = await fetch(API + '/documents/' + id + '/toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    showNotification('🔄 ' + data.message, 'info');
+                    setTimeout(() => {
+                        loadDocs();
+                        loadStats();
+                    }, 800);
+                } else {
+                    showNotification('❌ ' + (data.error || 'Erreur lors du basculement'), 'error');
+                }
+            } catch (err) {
+                showNotification('❌ Erreur réseau: ' + err.message, 'error');
+            }
+        }
+
+        // Voir détails
+        async function voirDetails(id) {
+            try {
+                showNotification('🔍 Chargement des détails...', 'info');
+                
+                const res = await fetch(API + '/documents/' + id);
+                const data = await res.json();
+                
+                if (data.success) {
+                    const doc = data.document;
+                    const isAvailable = doc.FIELD9 === 'disponible';
+                    const safeTitre = escapeText(doc.titre || 'Sans titre');
+                    const safeAuteur = escapeText(doc.auteur || 'Auteur inconnu');
+                    const safeType = escapeText(doc.type_de_document || 'Non spécifié');
+                    const safeEmpruntePar = escapeText(doc.emprunte_par || '');
+                    
+                    // Créer une fenêtre modale pour afficher les détails
+                    const modal = document.createElement('div');
+                    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 modal-backdrop';
+                    modal.innerHTML = `
+                        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+                            <!-- En-tête -->
+                            <div class="bg-blue-500 text-white p-6">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-xl font-bold">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        Détails du document
+                                    </h3>
+                                    <button onclick="this.closest('.fixed').remove()" 
+                                            class="text-white text-2xl hover:text-gray-200">
+                                        &times;
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Contenu -->
+                            <div class="p-6 overflow-y-auto max-h-[70vh]">
+                                <!-- Titre principal -->
+                                <div class="mb-6">
+                                    <h4 class="text-2xl font-bold text-gray-900 mb-2">${safeTitre}</h4>
+                                    <p class="text-gray-600 text-lg">
+                                        <i class="fas fa-user-pen mr-2"></i>${safeAuteur}
+                                    </p>
+                                </div>
+                                
+                                <!-- Grille d'informations -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    <div class="bg-blue-50 p-4 rounded-lg">
+                                        <p class="text-sm text-blue-700 mb-1">
+                                            <i class="fas fa-tag mr-2"></i>Type
+                                        </p>
+                                        <p class="font-medium text-lg">${safeType}</p>
+                                    </div>
+                                    
+                                    <div class="bg-green-50 p-4 rounded-lg">
+                                        <p class="text-sm text-green-700 mb-1">
+                                            <i class="fas fa-calendar mr-2"></i>Année
+                                        </p>
+                                        <p class="font-medium text-lg">${doc.annee || 'N/A'}</p>
+                                    </div>
+                                    
+                                    <div class="bg-${isAvailable ? 'green' : 'yellow'}-50 p-4 rounded-lg">
+                                        <p class="text-sm text-${isAvailable ? 'green' : 'yellow'}-700 mb-1">
+                                            <i class="fas fa-${isAvailable ? 'check' : 'clock'}-circle mr-2"></i>Statut
+                                        </p>
+                                        <p class="font-medium text-lg ${isAvailable ? 'text-green-600' : 'text-yellow-600'}">
+                                            ${isAvailable ? '✅ Disponible' : '⏳ Emprunté'}
+                                        </p>
+                                    </div>
+                                    
+                                    <div class="bg-purple-50 p-4 rounded-lg">
+                                        <p class="text-sm text-purple-700 mb-1">
+                                            <i class="fas fa-chart-line mr-2"></i>Réservations
+                                        </p>
+                                        <p class="font-medium text-lg">${doc.reservations || 0}</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Informations complémentaires -->
+                                <div class="space-y-4">
+                                    ${doc.emprunte_par ? `
+                                        <div class="flex items-center p-4 bg-yellow-50 rounded-lg">
+                                            <i class="fas fa-user text-yellow-600 text-xl mr-4"></i>
+                                            <div>
+                                                <p class="text-sm text-yellow-700">Actuellement emprunté par</p>
+                                                <p class="font-medium text-lg">${safeEmpruntePar}</p>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${doc.date_emprunt ? `
+                                        <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                                            <i class="fas fa-calendar-alt text-gray-600 text-xl mr-4"></i>
+                                            <div>
+                                                <p class="text-sm text-gray-700">Date d'emprunt</p>
+                                                <p class="font-medium text-lg">${new Date(doc.date_emprunt).toLocaleString('fr-FR', {
+                                                    weekday: 'long',
+                                                    year: 'numeric',
+                                                    month: 'long',
+                                                    day: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}</p>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    <div class="p-4 bg-gray-100 rounded-lg">
+                                        <p class="text-sm text-gray-600 mb-2">Identifiant unique</p>
+                                        <p class="font-mono text-sm break-all">${doc._id}</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Actions -->
+                                <div class="mt-8 pt-6 border-t">
+                                    <div class="flex flex-wrap gap-3">
+                                        <button onclick="this.closest('.fixed').remove()" 
+                                                class="px-5 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 modal-action-btn">
+                                            <i class="fas fa-times mr-2"></i>Fermer
+                                        </button>
+                                        
+                                        ${isAvailable 
+                                            ? `<button onclick="emprunterDocument('${doc._id}', '${safeTitre}'); this.closest('.fixed').remove()" 
+                                            class="px-5 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 modal-action-btn">
+                                            <i class="fas fa-handshake mr-2"></i>Emprunter maintenant
+                                            </button>`
+                                            : `<button onclick="retournerDocument('${doc._id}', '${safeTitre}'); this.closest('.fixed').remove()" 
+                                            class="px-5 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 modal-action-btn">
+                                            <i class="fas fa-rotate-left mr-2"></i>Retourner maintenant
+                                            </button>`
+                                        }
+                                        
+                                        <button onclick="toggleDocument('${doc._id}'); this.closest('.fixed').remove()" 
+                                                class="px-5 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 modal-action-btn">
+                                            <i class="fas fa-sync-alt mr-2"></i>Basculer manuellement
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modal);
+                    
+                    // Fermer la modal en cliquant à l'extérieur
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === this) {
+                            this.remove();
+                        }
+                    });
+                    
+                } else {
+                    showNotification('❌ ' + (data.error || 'Document non trouvé'), 'error');
+                }
+            } catch (err) {
+                showNotification('❌ Erreur: ' + err.message, 'error');
+            }
+        }
+
+        // Configurer recherche
+        function setupSearch() {
+            const searchInput = document.getElementById('search');
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                
+                if (searchTerm === '') {
+                    displayDocs(allDocuments);
+                    return;
+                }
+                
+                const filtered = allDocuments.filter(doc => 
+                    (doc.titre && doc.titre.toLowerCase().includes(searchTerm)) ||
+                    (doc.auteur && doc.auteur.toLowerCase().includes(searchTerm)) ||
+                    (doc.type_de_document && doc.type_de_document.toLowerCase().includes(searchTerm))
+                );
+                
+                displayDocs(filtered);
+            });
+        }
+
+        // Afficher notification
+        function showNotification(message, type = 'info') {
+            // Supprimer les notifications existantes
+            document.querySelectorAll('.notification').forEach(n => n.remove());
+            
+            const notification = document.createElement('div');
+            notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm border-l-4 ${
+                type === 'success' ? 'bg-green-50 text-green-800 border-green-500' :
+                type === 'error' ? 'bg-red-50 text-red-800 border-red-500' :
+                'bg-blue-50 text-blue-800 border-blue-500'
+            }`;
+            
+            notification.innerHTML = `
+                <div class="flex items-start">
+                    <i class="fas ${
+                        type === 'success' ? 'fa-check-circle text-green-500' :
+                        type === 'error' ? 'fa-exclamation-triangle text-red-500' :
+                        'fa-info-circle text-blue-500'
+                    } mr-3 mt-1 text-lg"></i>
+                    <div class="flex-1">${message}</div>
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            class="ml-3 text-gray-400 hover:text-gray-600">
+                        &times;
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-suppression après 5 secondes
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.style.opacity = '0';
+                    notification.style.transition = 'opacity 0.5s';
+                    setTimeout(() => {
+                        if (notification.parentElement) {
+                            notification.remove();
+                        }
+                    }, 500);
+                }
+            }, 5000);
+        }
+
+        // Afficher erreur
+        function showError(message) {
+            const container = document.getElementById('docs-container');
+            container.innerHTML = `
+                <div class="text-center py-12 text-red-500">
+                    <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                    <p class="text-lg font-medium">Erreur de chargement</p>
+                    <p class="mt-2 max-w-md mx-auto">${message}</p>
+                    <div class="mt-6 space-x-3">
+                        <button onclick="loadDocs()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
+                            <i class="fas fa-redo mr-2"></i>Réessayer
+                        </button>
+                        <a href="/login" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 inline-block">
+                            <i class="fas fa-sign-in-alt mr-2"></i>Se connecter
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
