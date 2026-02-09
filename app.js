@@ -1,27 +1,45 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { connectDB } from "./db.js";
+import { connectDB, getDB } from "./db.js";
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json());
 
-app.get("/", async (req, res) => {
+async function startServer() {
+  // ⚡ Connecte la DB au démarrage
   const db = await connectDB();
-  const collection = db.collection("documents"); // Nom de ta collection
+  if (!db) {
+    console.error("Impossible de se connecter à MongoDB. Arrêt du serveur.");
+    process.exit(1);
+  }
 
-  const docs = await collection.find({}).toArray(); // Récupère tous les documents
-  console.log(docs); // Vérifie si tu reçois bien les documents dans la console
+  // Routes
+  app.get("/", async (req, res) => {
+    try {
+      const db = getDB(); // récupère la DB déjà connectée
+      const collection = db.collection("documents");
+      const docs = await collection.find({}).toArray();
+      res.json(docs); // retourne JSON pour test
+    } catch (error) {
+      console.error(error);
+      res.status(500).send("Erreur serveur");
+    }
+  });
 
-  // Pour l'instant on envoie juste JSON dans le navigateur
-  res.send(docs);
-});
+  // Ici tu peux ajouter tes routes pour /api/auth etc.
 
-app.listen(PORT, () => {
-  console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`);
-});
+  // Démarre le serveur
+  app.listen(PORT, () => {
+    console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`);
+  });
+}
+
+// Lancement du serveur
+startServer();
