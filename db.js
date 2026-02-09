@@ -3,83 +3,82 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Votre URI complète avec mot de passe
 const uri = process.env.MONGODB_URI;
-
 let client = null;
 let db = null;
 
+/**
+ * Connexion à MongoDB Atlas
+ */
 export async function connectDB() {
+  if (db) return db; // déjà connecté
+
   try {
-    if (!client) {
-      console.log("🔄 Tentative de connexion à MongoDB Atlas...");
-      
-      // Options de connexion
-      const options = {
-        serverSelectionTimeoutMS: 10000,
-        connectTimeoutMS: 10000,
-      };
-      
-      client = new MongoClient(uri, options);
-      await client.connect();
-      
-      // Tester la connexion
-      await client.db("admin").command({ ping: 1 });
-      console.log("✅ Connexion MongoDB Atlas réussie !");
-    }
-    
+    console.log("🔄 Tentative de connexion à MongoDB Atlas...");
+
+    // Options de connexion
+    const options = {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+    };
+
+    client = new MongoClient(uri, options);
+    await client.connect();
+
+    // Tester la connexion
+    await client.db("admin").command({ ping: 1 });
+    console.log("✅ Connexion MongoDB Atlas réussie !");
+
     // Utiliser la base 'bibliothequedb'
     db = client.db("bibliothequedb");
     console.log(`📁 Base de données: ${db.databaseName}`);
-    
-    // Vérifier et créer la collection si nécessaire
-    await ensureCollectionExists();
-    
+
+    // Initialisation des collections
+    await ensureCollectionsExist();
+
     return db;
-    
+
   } catch (err) {
     console.error("❌ Erreur de connexion MongoDB :", err.message);
-    console.log("\n🔍 Dépannage :");
-    console.log("1. Vérifiez votre mot de passe dans .env");
-    console.log("2. Allez sur MongoDB Atlas → Network Access");
-    console.log("3. Ajoutez 'Allow Access From Anywhere' (0.0.0.0/0)");
-    console.log("4. Attendez 1-2 minutes que les changements prennent effet");
+    console.log("\n🔍 Vérifiez :");
+    console.log("1. Mot de passe correct dans .env");
+    console.log("2. Network Access autorisé (0.0.0.0/0) dans MongoDB Atlas");
+    console.log("3. Attendre 1-2 minutes après les changements");
     return null;
   }
 }
 
-async function ensureCollectionExists() {
+/**
+ * Crée les collections si elles n'existent pas et insère des données d'exemple
+ */
+async function ensureCollectionsExist() {
   try {
     const collections = await db.listCollections().toArray();
     const collectionNames = collections.map(col => col.name);
-    
-    console.log(`📚 Collections disponibles: ${collectionNames.join(', ') || 'Aucune'}`);
-    
-    // Créer la collection 'documents' si elle n'existe pas
+    console.log(`📚 Collections existantes: ${collectionNames.join(', ') || 'Aucune'}`);
+
+    // Collection documents
     if (!collectionNames.includes("documents")) {
       await db.createCollection("documents");
       console.log("📄 Collection 'documents' créée");
-      
-      // Insérer des données d'exemple
-      await insertSampleData();
-    } else {
-      // Vérifier le nombre de documents
-      const count = await db.collection("documents").countDocuments();
-      console.log(`📖 ${count} documents dans la collection`);
+      await insertSampleDocuments();
     }
-    
-    // Créer la collection 'users' pour plus tard
+
+    // Collection users
     if (!collectionNames.includes("users")) {
       await db.createCollection("users");
       console.log("👥 Collection 'users' créée");
     }
-    
+
   } catch (error) {
-    console.error("Erreur lors de l'initialisation:", error.message);
+    console.error("❌ Erreur lors de l'initialisation des collections:", error.message);
   }
 }
 
-async function insertSampleData() {
+/**
+ * Insère des documents de test
+ */
+async function insertSampleDocuments() {
   const sampleDocuments = [
     {
       titre: "Le Petit Prince",
@@ -88,7 +87,7 @@ async function insertSampleData() {
       annee: 1943,
       disponible: true,
       reservations: 245,
-      FIELD9: "disponible",
+      status: "disponible",
       emprunte_par: null,
       date_emprunt: null
     },
@@ -99,7 +98,7 @@ async function insertSampleData() {
       annee: 1949,
       disponible: false,
       reservations: 189,
-      FIELD9: "emprunté",
+      status: "emprunté",
       emprunte_par: "étudiant001",
       date_emprunt: new Date("2024-01-20")
     },
@@ -110,7 +109,7 @@ async function insertSampleData() {
       annee: 1997,
       disponible: true,
       reservations: 312,
-      FIELD9: "disponible",
+      status: "disponible",
       emprunte_par: null,
       date_emprunt: null
     },
@@ -121,7 +120,7 @@ async function insertSampleData() {
       annee: 2023,
       disponible: true,
       reservations: 78,
-      FIELD9: "disponible",
+      status: "disponible",
       emprunte_par: null,
       date_emprunt: null
     },
@@ -132,20 +131,23 @@ async function insertSampleData() {
       annee: 2022,
       disponible: false,
       reservations: 92,
-      FIELD9: "emprunté",
+      status: "emprunté",
       emprunte_par: "étudiant002",
       date_emprunt: new Date("2024-01-25")
     }
   ];
-  
+
   try {
     const result = await db.collection("documents").insertMany(sampleDocuments);
-    console.log(`📚 ${result.insertedCount} documents d'exemple insérés`);
+    console.log(`📚 ${result.insertedCount} documents de test insérés`);
   } catch (error) {
-    console.error("Erreur insertion données:", error.message);
+    console.error("❌ Erreur insertion documents:", error.message);
   }
 }
 
+/**
+ * Récupère la DB (après connexion)
+ */
 export function getDB() {
   if (!db) {
     throw new Error("Base de données non connectée. Appelez connectDB() d'abord.");
@@ -153,6 +155,9 @@ export function getDB() {
   return db;
 }
 
+/**
+ * Fermer la connexion
+ */
 export async function closeDB() {
   if (client) {
     await client.close();
@@ -162,12 +167,14 @@ export async function closeDB() {
   }
 }
 
-// Test rapide de connexion (optionnel)
+/**
+ * Test rapide de connexion
+ */
 export async function testConnection() {
   try {
     const testClient = new MongoClient(uri);
     await testClient.connect();
-    console.log("✅ Test de connexion réussi");
+    console.log("✅ Test de connexion MongoDB réussi");
     await testClient.close();
     return true;
   } catch (error) {
